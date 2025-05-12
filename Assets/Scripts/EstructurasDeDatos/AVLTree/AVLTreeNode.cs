@@ -1,17 +1,15 @@
-using System.Xml;
 using UnityEngine;
 
 public class AVLTreeNode
 {
-    public int Value { get; set; }
-    public AVLTreeNode? Left { get; set; }
-    public AVLTreeNode? Right { get; set; }
-    public int Height { get; set; }
+    public int value;
+    public int height;
+    public AVLTreeNode left;
+    public AVLTreeNode right;
+
     public AVLTreeNode(int value)
     {
-        Value = value;
-        Left = null;
-        Right = null;
-        Height = 1;
+        this.value = value;
+        height = 1;
     }
 }
