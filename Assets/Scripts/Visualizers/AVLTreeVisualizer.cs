@@ -1,90 +1,91 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Xml;
 
 public class AVLTreeVisualizer : MonoBehaviour
 {
-    public GameObject nodePrefab;
-    public GameObject linePrefab;
-    public RectTransform panelTransform;
-    public float horizontalSpacing = 1.5f;
-    public float verticalSpacing = 2.0f;
-    private Dictionary<AVLTreeNode, GameObject> nodeObjects = new Dictionary<AVLTreeNode, GameObject>();
+    public GameObject nodePrefab;         // Prefab del NodeUI
+    public RectTransform panelTransform;  // Panel donde colocaremos los nodos
+    private Dictionary<AVLTreeNode, GameObject> nodesSpawned = new();
+
+    public GameObject linePrefab;          // Prefab de la línea
+    private List<GameObject> linesSpawned = new(); // Para llevar control y limpiar después
 
     public void VisualizeTree(AVLTreeNode root)
     {
-        ClearVisualization();
-        if (root != null)
+        if (root == null)
         {
-            DrawNode(root, Vector2.zero, 0);
+            Debug.LogWarning("No hay árbol para visualizar.");
+            return;
         }
+
+        ClearPreviousNodes();
+
+        float startX = 0f; // Coordenada inicial horizontal
+        float startY = 0f; // Coordenada inicial vertical
+        float horizontalSpacing = 100f; // Separación horizontal entre nodos
+        float verticalSpacing = 120f;   // Separación vertical entre niveles
+
+        DrawRecursive(root, startX, startY, horizontalSpacing, verticalSpacing);
     }
-    void Start()
+
+    private void DrawRecursive(AVLTreeNode node, float x, float y, float hSpacing, float vSpacing)
     {
-        Debug.Log("Probando instancia de AVLNodeUI");
-        GameObject testNode = Instantiate(nodePrefab, transform);
-        var label = testNode.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-        if (label != null)
+        if (node == null)
+            return;
+
+        // Instanciar el nodo
+        GameObject newNode = Instantiate(nodePrefab, panelTransform);
+        newNode.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = node.Value.ToString();
+        RectTransform rt = newNode.GetComponent<RectTransform>();
+        rt.anchoredPosition = new Vector2(x, y);
+
+        nodesSpawned[node] = newNode;
+
+        // Dibujar hijo izquierdo
+        if (node.Left != null)
         {
-            label.text = "AVL";
-        }
-        else
-        {
-            Debug.LogWarning("No se encontró TextMeshProUGUI en el prefab.");
+            DrawRecursive(node.Left, x - hSpacing, y - vSpacing, hSpacing * 0.7f, vSpacing);
+            DrawLineBetween(nodesSpawned[node], nodesSpawned[node.Left]);
         }
 
-        var rt = testNode.GetComponent<RectTransform>();
-        rt.anchoredPosition = Vector2.zero;
+        // Dibujar hijo derecho
+        if (node.Right != null)
+        {
+            DrawRecursive(node.Right, x + hSpacing, y - vSpacing, hSpacing * 0.7f, vSpacing);
+            DrawLineBetween(nodesSpawned[node], nodesSpawned[node.Right]);
+        }
+
     }
 
-    private void DrawNode(AVLTreeNode node, Vector2 position, int depth)
-    {
-        if (node == null) return;
-
-        // Crear el nodo visual
-        GameObject nodeObj = Instantiate(nodePrefab, panelTransform);
-        nodeObj.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = node.value.ToString();// Asumiendo que AVLNode tiene un campo value
-        nodeObjects[node] = nodeObj;
-
-        // Calcular posiciones de hijos
-        float childOffset = horizontalSpacing * Mathf.Pow(0.5f, depth);
-
-        if (node.left != null)
-        {
-            Vector2 leftPos = position + new Vector2(-childOffset, -verticalSpacing);
-            DrawNode(node.left, leftPos, depth + 1);
-            DrawLine(position, leftPos);
-        }
-
-        if (node.right != null)
-        {
-            Vector2 rightPos = position + new Vector2(childOffset, -verticalSpacing);
-            DrawNode(node.right, rightPos, depth + 1);
-            DrawLine(position, rightPos);
-        }
-    }
-
-    private void DrawLine(Vector2 from, Vector2 to)
+    private void DrawLineBetween(GameObject fromNode, GameObject toNode)
     {
         GameObject line = Instantiate(linePrefab, panelTransform);
         RectTransform lineRect = line.GetComponent<RectTransform>();
 
-        Vector2 direction = to - from;
+        Vector2 startPos = fromNode.GetComponent<RectTransform>().anchoredPosition;
+        Vector2 endPos = toNode.GetComponent<RectTransform>().anchoredPosition;
+
+        Vector2 direction = endPos - startPos;
         float distance = direction.magnitude;
 
-        lineRect.sizeDelta = new Vector2(4f, distance); // grosor, largo
-        lineRect.anchoredPosition = from + direction / 2;
+        lineRect.sizeDelta = new Vector2(4f, distance); // Grosor y longitud
+        lineRect.anchoredPosition = startPos + direction / 2;
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         lineRect.rotation = Quaternion.Euler(0, 0, angle - 90);
+
+        line.transform.SetAsFirstSibling(); // Para que la línea esté detrás del nodo
+
+        linesSpawned.Add(line);
     }
 
 
-    private void ClearVisualization()
+    private void ClearPreviousNodes()
     {
-        foreach (Transform child in transform)
+        foreach (var entry in nodesSpawned)
         {
-            Destroy(child.gameObject);
+            Destroy(entry.Value);
         }
-        nodeObjects.Clear();
+        nodesSpawned.Clear();
     }
 }
+
